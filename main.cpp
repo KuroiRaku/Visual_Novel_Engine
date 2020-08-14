@@ -1,6 +1,13 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+
+#include "IndexBuffer.h"
+#include "VertexBuffer.h"
+#include "VertexArray.h"
+#include "Shader.h"
+
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -10,6 +17,8 @@
 #include <string>
 #include <sstream>
 #include <SOIL/SOIL.h>
+
+
 
 #include <ft2build.h>
 #include FT_FREETYPE_H 
@@ -25,52 +34,13 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
 void increamentRValue(float& RValue);
 
-struct ShaderProgramSource
-{
-    std::string VertexSource;
-    std::string FragmentSource;
-};
 
-static ShaderProgramSource ParseShader(const std::string& filepath)
-{
-    std::ifstream stream(filepath);
 
-    
 
-    enum class ShaderType
-    {
-        NONE = -1, VERTEX = 0, FRAGMENT = 1
-    };
 
-    std::string line;
-    std::stringstream ss[2];
-    ShaderType type = ShaderType::NONE;
+//keeping the code below because is part of my hardwork ;_;
+// and also to show that how to make all the function without abstracting everything into classes
 
-    while (getline(stream, line))
-    {
-        if (line.find("#shader") != std::string::npos)
-        {
-
-            if (line.find("vertex") != std::string::npos)
-            {
-                //set mode to vertex
-                type = ShaderType::VERTEX;
-
-            }
-            else if (line.find("fragment") != std::string::npos)
-            {
-                type = ShaderType::FRAGMENT;
-            }
-
-        }
-        else
-            {
-                ss[(int)type] << line << '\n';
-            }
-        
-    }
-    return { ss[0].str(),ss[1].str()};
-}
 /*
 
 
@@ -249,44 +219,7 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 
 */
 
-static unsigned int CompileShader(unsigned int type, const std::string& source)
-{
-    unsigned int id = glCreateShader(type);
-    const char* src = source.c_str();
-    glShaderSource(id, 1, &src, nullptr);
-    glCompileShader(id);
 
-    int result;
-    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
-    if (result == GL_FALSE)
-    {
-        int length;
-        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &length);
-        char* message = (char*)_malloca(length * sizeof(char));
-
-        std::cout << "ERROR::SHADER::FRAGMENT::COMPILATION_FAILED\n"  << message<< std::endl;
-        glDeleteShader(id);
-        return 0;
-    }
-    return id;
-}
-
-static unsigned int CreateShader(const std::string& vertexShader, const std::string& fragmentShader  )
-{
-    unsigned int program = glCreateProgram();
-    unsigned int vs = CompileShader(GL_VERTEX_SHADER, vertexShader);
-    unsigned int fs = CompileShader(GL_FRAGMENT_SHADER, fragmentShader);
-    
-    glAttachShader(program, vs);
-    glAttachShader(program, fs);
-    glLinkProgram(program);
-    glValidateProgram(program);
-
-    glDeleteShader(vs);
-    glDeleteShader(fs);
-
-    return program;
-}
 
 int main(void)
 {
@@ -319,53 +252,55 @@ int main(void)
 
     glfwSwapInterval(1);
 
-    float positions[] = {
+    //the dot for a 3d square
+    float square[] = {
         -0.5f,-0.5f,0.0f,
          0.5f,-0.5f,0.0f,
          0.5f, 0.5f,0.0f,
-
-        
         -0.5f, 0.5f,0.0f,
-        
     };
+
+    
     unsigned int indices[] = {
         0,1,2,
         2,3,0
     };
     
 
-    unsigned int vao;
+   /* unsigned int vao;
     glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    glBindVertexArray(vao);*/
 
+    //binding the buffer
     unsigned int buffer;
-    glGenBuffers(1, &buffer);
-    glBindBuffer(GL_ARRAY_BUFFER, buffer);
-    glBufferData(GL_ARRAY_BUFFER, 6 * 3* sizeof(float), positions, GL_STATIC_DRAW);
+    //for the numbers please refer to the Square array above
+    VertexBuffer vb(square, 4 * 3 * sizeof(float));
 
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT,GL_FALSE,sizeof(float)*3, 0);
+    VertexArray va;
+    VertexBufferLayout layout;
+    layout.Push<float>(3);
+    va.AddBuffer(vb,layout);
 
-    //optimise way so not to reuse same vertices
+    /*glEnableVertexAttribArray(0);
+    
+    //3 because is 3d
+
+    glVertexAttribPointer(0, 3, GL_FLOAT,GL_FALSE,sizeof(float)*3, 0);*/
+
+    //optimise way so not to reuse same vertices by introducing index buffer
     unsigned int ibo;
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, 6 * sizeof(unsigned int), indices, GL_STATIC_DRAW);
+    IndexBuffer ib(indices, 6);
+    
+    Shader shader("res/shaders/Basic.shader");
+    shader.Bind();
+    shader.SetUniform4f("u_Color", 0.2f, 0.4f, 0.8f, 1.0f);
 
+    va.Unbind();
+    shader.Unbind();
+    vb.Unbind();
+    ib.Unbind();
+    
 
-    ShaderProgramSource source = ParseShader("res/shaders/Basic.shader");
-    std::cout << "Vertex" << std::endl;
-    std::cout << source.VertexSource << std::endl;
-
-    std::cout << "Fragment" << std::endl;
-    std::cout << source.FragmentSource << std::endl;
-
-    unsigned int shader = CreateShader(source.VertexSource, source.FragmentSource);
-    glUseProgram(shader);
-
-    int location = glGetUniformLocation(shader, "u_Color");
-    std::cout << location << std::endl;
-    glUniform4f(location, 0.2f,0.4f,0.8f,1.0f);
     
     //colour
     float rValue = 184.0 / 255.0;
@@ -381,12 +316,16 @@ int main(void)
         // -----
         processInput(window);
 
+        GLCall(glClear(GL_COLOR_BUFFER_BIT));
+
         // render
         // ------
-        glClearColor(184.0f / 255.0f, gValue, bValue, alpha);
-
-        glUniform4f(location, rValue, gValue, bValue, alpha);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, gValue, bValue, alpha);
+        shader.Bind();
+        shader.SetUniform4f("u_Color", rValue, gValue, bValue, alpha);
+        
+        va.Bind();
+        ib.Bind();
 
         if (rValue > 1.0f)
             increment = -0.05f;
@@ -395,6 +334,9 @@ int main(void)
 
         rValue += increment;
 
+        va.Bind();
+        ib.Bind();
+        
         //sadly calling a function isn't optimized... or fast enough?
         //increamentRValue(gValue);
         
@@ -418,7 +360,7 @@ int main(void)
         glfwPollEvents();
     }
    
-    glDeleteProgram(shader);
+    
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
     glfwTerminate();
@@ -434,6 +376,18 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
         glClearColor(255.0 / 255.0, 0, 0, 1);
         glClear(GL_COLOR_BUFFER_BIT);
+    }
+    //trying changing the shape
+    if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+        glClearColor(255.0 / 255.0, 0, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT);
+        float triangle[] = {
+        -0.5f, -0.5f, 0.0f, // left  
+         0.5f, -0.5f, 0.0f, // right 
+         0.0f,  0.5f, 0.0f  // top
+        };
+
+
     }
 
     if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS) {
