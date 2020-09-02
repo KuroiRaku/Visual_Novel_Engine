@@ -25,3 +25,7 @@ People who are interested in this project contact me by discord KuroiRaku 黒い
  - Creating text boxes
  - display image at certain break point 
  - using default menu layout, save files default location
+
+
+#Note
+- Please use visual studio to open the project 
