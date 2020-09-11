@@ -15,9 +15,11 @@ People who are interested in this project contact me by discord KuroiRaku 黒い
 
 #Task to do next
  - Abstracing each function into classes
- - implementing text 
- - loading images
+ - implementing text rendere
+ - setup IMGUI
+ - implementing loading image
  - implement text boxes to display
+ - implement scene class with textbox
  - audio que 
  - save file and load file
 
